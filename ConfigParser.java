@@ -31,12 +31,11 @@ public class ConfigParser {
 	
 	//pass config file and node number to this function
 	//return ArrayList<Node> of neighbours
-	List<Node> getNeighbors(String fileName, int nodeNumber) throws IOException{
+	List<Node> getNeighbors(String fileName, int nodeNumber, int nodeCount) throws IOException{
 		
 		String line;
 		FileReader fileReader = new FileReader(fileName);
 		BufferedReader bufferedReader = new BufferedReader(fileReader);
-		int nodeCount = 6;
 		
 		List<Node> neighboursDetailsList = new ArrayList<Node>();
 		
@@ -54,7 +53,8 @@ public class ConfigParser {
 			neighboursNodeIds[i]=neighboursNodeIds[i].trim();
 		}
 				
-		System.out.println("number of neighbours are: "+neighboursNodeIds);
+		//System.out.println("number of neighbours are: "+neighboursNodeIds);
+		System.out.println("this node is: "+nodeNumber);
 		if(neighboursNodeIds.length > 0){//it means non empty line
 			System.out.println(line);
 		}

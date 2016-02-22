@@ -34,7 +34,9 @@ public class MainThread {
 		String line = bufferReader1.readLine();				//Line = First line of Temp file-- "TotalNumNodes" "RootNode"
 		String[] words = line.split("\t", -1);		//String Array of Words to store TotalNumNodes and RootNode
 		nodeCount = Integer.parseInt(words[0]);	//TotalNodes = First word in First Line
+		System.out.println("node count is: "+nodeCount);
 		rootNodeId = Integer.parseInt(words[1]);		//RootNode = Second Word in First line
+		System.out.println("root node id is :"+rootNodeId);
 		
 		if(rootNodeId==thisNode.getNodeId())
 		{
@@ -60,6 +62,7 @@ public class MainThread {
 			{
 				//filewriter.write("Node ID of the Current Node is:" +myNodeId);
 				thisNode.setHostName(words[1]);
+				
 				//filewriter.write("The hostname of current Node is:" +thisNode.getHostName());
 				thisNode.setPort(Integer.parseInt(words[2]));
 				//filewriter.write("The PortNumber of the Current node is: " +thisNode.getPortNumber());	
@@ -72,12 +75,14 @@ public class MainThread {
 		
 		
 		ConfigParser configParser = new ConfigParser();
-		thisNode.setNeighbours(configParser.getNeighbors(args[0], Integer.parseInt(args[1])));
+		thisNode.setNeighbours(configParser.getNeighbors(args[0], Integer.parseInt(args[1]), nodeCount));
 		
 		FileReader fileReader1 = new FileReader(args[0]);
 		BufferedReader bufferedReader = new BufferedReader(fileReader1);
 		
 		try {
+
+		//first making clients for all the neighbours of root node (make sure, the servers on root's neighbours are up and running before deploying this code to root)
 			serverSocket = new ServerSocket(thisNode.getPort());
 			if(thisNode.isRoot()){
 				for(Node node:thisNode.getNeighbours()){

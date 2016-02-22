@@ -1,3 +1,2 @@
 me: 4
-parent: 5
-children: *
+parent: *children: 2 5 3 
