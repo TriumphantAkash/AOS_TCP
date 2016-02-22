@@ -67,6 +67,6 @@ done < temp
 
 	echo "Root Node is: " $root_node
 	echo "laucher script is now going to launch the java file into root_Node" $root_node 
-#	ssh -o StrictHostKeyChecking=no $netid@$hostname "cd $(pwd); java MainThread temp $root_node" &  #execute the java parser file and pass the args as node id and temp file
+#	ssh -o StrictHostKeyChecking=no $netid@$hostname "cd $(pwd); java MainThread temp $root_node"  #execute the java parser file and pass the args as node id and temp file
 
 

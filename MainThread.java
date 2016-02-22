@@ -16,11 +16,12 @@ public class MainThread {
 	public static Message msg;
 	public static int nodeCount;
 	public static int ackNackCount = 0;
+	public static ServerThread serverThread;
 	
 	//assuming args[0] be fileName, 
 	//args[1] be this node's ID
 	
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws Exception {
 		thisNode = new Node();
 		
 		thisNode.setNodeId(Integer.parseInt(args[1]));
@@ -76,14 +77,21 @@ public class MainThread {
 		
 		ConfigParser configParser = new ConfigParser();
 		thisNode.setNeighbours(configParser.getNeighbors(args[0], Integer.parseInt(args[1]), nodeCount));
+		System.out.println("["+ thisNode.getNodeId()+"]"+"my neighbours are:");
+		for(Node node:thisNode.getNeighbours()){
+			System.out.print(node.getNodeId()+" ");
+		}
+		System.out.println("\n");
 		
 		FileReader fileReader1 = new FileReader(args[0]);
 		BufferedReader bufferedReader = new BufferedReader(fileReader1);
 		
 		try {
 
+			serverThread = new ServerThread(thisNode);
+			serverThread.start();
+			
 		//first making clients for all the neighbours of root node (make sure, the servers on root's neighbours are up and running before deploying this code to root)
-			serverSocket = new ServerSocket(thisNode.getPort());
 			if(thisNode.isRoot()){
 				for(Node node:thisNode.getNeighbours()){
 					//Socket findSocket = new Socket(node.getHostName(), node.getPort());
@@ -101,127 +109,15 @@ public class MainThread {
 				}
 			}
 			
-			while(true){
-				
-				//writing node's parent and child information to a file after algorithm finishes
-				if(ackNackCount >= thisNode.getNeighbours().size()){
-					//write to file and exit
-					File file = new File(thisNode.getNodeId()+"output.txt");
-					
-					try {
-						FileWriter fileWriter = new FileWriter(file);
-						fileWriter.write("me: "+thisNode.getNodeId()+"\n");
-						if(thisNode.getParent() != null){
-							fileWriter.write("parent: "+thisNode.getParent().getNodeId()+"\n");
-						}else {
-							fileWriter.write("parent: *");
-						}
-						
-						if(thisNode.getChildren().size() == 0){
-							fileWriter.write("children: *");
-						}else {
-							fileWriter.write("children: ");
-							
-							for (Node node: thisNode.getChildren()){
-								fileWriter.write(node.getNodeId()+" ");
-							}
-						}
-						
-						fileWriter.close();
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
-				}
-				/////////////////////////////////////////////////////////////////////////////////
-				
-				
-				receiveSocket = serverSocket.accept();
-				
-				//control comes here whenever a new client is connected to the server
-				//receiveSocket.getLocalAddress();		
-				
-				ObjectInputStream ois = new ObjectInputStream(receiveSocket.getInputStream());
-				
-				msg = (Message)ois.readObject();
-				
-					if(msg.getMsgType().equals("Find")){	//find msg
-						if(thisNode.isRoot() || (thisNode.getParent() != null)){
-							//send nack
-							Message nackMsg = new Message();
-							nackMsg.setSender(thisNode);
-							nackMsg.setMsgType("Nack");
-							
-							sendSocket = new Socket(msg.getSender().getHostName(), msg.getSender().getPort());
-							ObjectOutputStream oos = new ObjectOutputStream(sendSocket.getOutputStream());
-							
-							//get the node's details who sent this find message
-							//and now send this nack message to that host's server
-							oos.writeObject(nackMsg);
-							sendSocket.close();
-							
-						}else {
-							
-							
-							//update the node itself first
-							thisNode.setParent(msg.getSender());
-							
-							//send ack
-							Message ackMsg = new Message();
-							ackMsg.setSender(thisNode);
-							ackMsg.setMsgType("Ack");
-							
-							sendSocket = new Socket(msg.getSender().getHostName(), msg.getSender().getPort());
-							ObjectOutputStream oos = new ObjectOutputStream(sendSocket.getOutputStream());
-							
-							//get the node's details who sent this find message
-							//and now send this nack message to that host's server
-							oos.writeObject(ackMsg);
-							
-							sendSocket.close();
-							//send find message to the neighbors
-							for(Node node:thisNode.getNeighbours()){
-								//Socket findSocket = new Socket(node.getHostName(), node.getPort());
-								
-								Message findMsg = new Message();
-								findMsg.setSender(thisNode);
-								findMsg.setMsgType("Find");
-								
-								Socket findSendSocket = new Socket(node.getHostName(), node.getPort());
-								ObjectOutputStream findOos = new ObjectOutputStream(findSendSocket.getOutputStream());
-								
-								findOos.writeObject(findMsg);
-								
-								findSendSocket.close();
-							}
-						}
-					}
-					
-					if(msg.getMsgType().equals("Ack")){
-						
-						//creating child
-						Node child = msg.getSender();
-						//add a child to this node
-						thisNode.getChildren().add(child);
-						
-						//increment ack/nack count
-						ackNackCount++;
-					}
-					
-					if(msg.getMsgType().equals("Nack")){
-						//do noting
-						ackNackCount++;
-					}
-			}
-
-			
-		} catch (IOException | ClassNotFoundException e) {
+		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
 		finally {
 			//sendSocket.close();
-			receiveSocket.close();
+			//receiveSocket.close();
+			serverThread.join();
 		}
 	}
 }
