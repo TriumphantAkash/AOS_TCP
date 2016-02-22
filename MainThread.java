@@ -101,16 +101,25 @@ public class MainThread {
 				//writing node's parent and child information to a file after algorithm finishes
 				if(ackNackCount >= thisNode.getNeighbours().size()){
 					//write to file and exit
-					File file = new File("output.txt");
+					File file = new File(thisNode.getNodeId()+"output.txt");
 					
 					try {
 						FileWriter fileWriter = new FileWriter(file);
 						fileWriter.write("me: "+thisNode.getNodeId()+"\n");
-						fileWriter.write("parent: "+thisNode.getParent()+"\n");
-						fileWriter.write("children: ");
+						if(thisNode.getParent() != null){
+							fileWriter.write("parent: "+thisNode.getParent().getNodeId()+"\n");
+						}else {
+							fileWriter.write("parent: *");
+						}
 						
-						for (Node node: thisNode.getChildren()){
-							fileWriter.write(node.getNodeId()+" ");
+						if(thisNode.getChildren().size() == 0){
+							fileWriter.write("children: *");
+						}else {
+							fileWriter.write("children: ");
+							
+							for (Node node: thisNode.getChildren()){
+								fileWriter.write(node.getNodeId()+" ");
+							}
 						}
 						
 						fileWriter.close();
@@ -131,7 +140,7 @@ public class MainThread {
 				msg = (Message)ois.readObject();
 				
 					if(msg.getMsgType().equals("Find")){	//find msg
-						if(thisNode.isRoot() || (!thisNode.getParent().equals(null))){
+						if(thisNode.isRoot() || (thisNode.getParent() != null)){
 							//send nack
 							Message nackMsg = new Message();
 							nackMsg.setSender(thisNode);
