@@ -24,6 +24,9 @@ public class MainThread {
 	public static void main(String[] args) throws Exception {
 		thisNode = new Node();
 		
+		for(int i=0; i<args.length; i++){
+			args[i]=args[i].trim();
+		}
 		thisNode.setNodeId(Integer.parseInt(args[1]));
 //		thisNode.setHostName(args[2]);
 //		thisNode.setPort(Integer.parseInt(args[3]));
@@ -34,6 +37,10 @@ public class MainThread {
 	
 		String line = bufferReader1.readLine();				//Line = First line of Temp file-- "TotalNumNodes" "RootNode"
 		String[] words = line.split("\t", -1);		//String Array of Words to store TotalNumNodes and RootNode
+		for(int i=0; i<words.length; i++){
+			words[i]=words[i].trim();
+		}
+
 		nodeCount = Integer.parseInt(words[0]);	//TotalNodes = First word in First Line
 		System.out.println("node count is: "+nodeCount);
 		rootNodeId = Integer.parseInt(words[1]);		//RootNode = Second Word in First line
@@ -93,6 +100,7 @@ public class MainThread {
 			
 		//first making clients for all the neighbours of root node (make sure, the servers on root's neighbours are up and running before deploying this code to root)
 			if(thisNode.isRoot()){
+				Thread.sleep(5000);
 				for(Node node:thisNode.getNeighbours()){
 					//Socket findSocket = new Socket(node.getHostName(), node.getPort());
 					

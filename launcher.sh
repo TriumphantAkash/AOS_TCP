@@ -44,6 +44,14 @@ do
 
 	 else
 	 #########Extract Location of each node
+
+	       if [ $current_line -le $(expr $node_count + 1) -a $current_line -eq $(expr $root_node + 2) ]; then
+	       	 node_id_root=$(echo $line | cut -f1 -d" ")
+	         hostname_root=$(echo $line | cut -f2 -d" ")
+		 #host_names[$node_id]="$hostname"
+		 port_num_root=$(echo $line | cut -f3 -d" ")
+		 fi
+		    
 	       if [ $current_line -le $(expr $node_count + 1) -a $current_line -ne $(expr $root_node + 2) ]; then
 	            nodes_location+=$( echo -e $line"#" )
 	            node_id=$(echo $line | cut -f1 -d" ")
@@ -67,6 +75,6 @@ done < temp
 
 	echo "Root Node is: " $root_node
 	echo "laucher script is now going to launch the java file into root_Node" $root_node 
-#	ssh -o StrictHostKeyChecking=no $netid@$hostname "cd $(pwd); java MainThread temp $root_node"  #execute the java parser file and pass the args as node id and temp file
+	ssh -o StrictHostKeyChecking=no $netid@$hostname_root "cd $(pwd); java MainThread temp $root_node"  #execute the java parser file and pass the args as node id and temp file
 
 
