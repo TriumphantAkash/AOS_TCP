@@ -8,6 +8,7 @@ public class Node implements Serializable{
 	/**
 	 * 
 	 */
+	private int DSR = 0;
 	private static final long serialVersionUID = 1L;
 	private boolean isRoot;
 	private Node parent;
@@ -21,6 +22,15 @@ public class Node implements Serializable{
 		//parent = new Node();
 		children = new ArrayList<Node>();
 		neighbours = new ArrayList<Node>();
+	}
+	
+	public int getDSR() {
+		return DSR;
+	}
+
+
+	public void setDSR(int dSR) {
+		this.DSR = dSR;
 	}
 	
 	
