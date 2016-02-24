@@ -1,12 +1,19 @@
 import java.io.File;
 import java.io.FileReader;
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketAddress;
+import java.nio.ByteBuffer;
+
+import com.sun.nio.sctp.MessageInfo;
+import com.sun.nio.sctp.SctpChannel;
 
 public class MainThread {
 	public static ServerSocket serverSocket;
@@ -17,6 +24,10 @@ public class MainThread {
 	public static int nodeCount;
 	public static int ackNackCount = 0;
 	public static ServerThread serverThread;
+	public static final int MESSAGE_SIZE = 10000;
+	
+	public static ByteBuffer byteBuffer = ByteBuffer.allocate(MESSAGE_SIZE);
+	
 	
 	//assuming args[0] be fileName, 
 	//args[1] be this node's ID
@@ -107,13 +118,28 @@ public class MainThread {
 					Message findMsg = new Message();
 					findMsg.setSender(thisNode);
 					findMsg.setMsgType("Find");
+					//*****************************************************************************
+//					Socket findSendSocket = new Socket(node.getHostName(), node.getPort());
+//					ObjectOutputStream findOos = new ObjectOutputStream(findSendSocket.getOutputStream());
+//					
+//					findOos.writeObject(findMsg);
+//					
+//					findSendSocket.close();
+					//***********************************************************
+					SocketAddress socketAddress = new InetSocketAddress(node.getHostName(), node.getPort());
+					SctpChannel sctpChannel = SctpChannel.open();
+					sctpChannel.connect(socketAddress);
+					MessageInfo messageInfo = MessageInfo.createOutgoing(null, 0);
+					ByteArrayOutputStream bos = new ByteArrayOutputStream();
+					ObjectOutputStream oos = new ObjectOutputStream(bos);
+					oos.writeObject(findMsg);
+					byteBuffer.put(bos.toByteArray());
+					byteBuffer.flip();
+					sctpChannel.send(byteBuffer, messageInfo);
+					sctpChannel.close();
+					byteBuffer.clear();
 					
-					Socket findSendSocket = new Socket(node.getHostName(), node.getPort());
-					ObjectOutputStream findOos = new ObjectOutputStream(findSendSocket.getOutputStream());
-					
-					findOos.writeObject(findMsg);
-					
-					findSendSocket.close();
+					//***********************************************************
 				}
 			}
 			

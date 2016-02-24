@@ -1,11 +1,23 @@
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ConnectException;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetEncoder;
+
+import com.sun.nio.sctp.MessageInfo;
+import com.sun.nio.sctp.SctpChannel;
+import com.sun.nio.sctp.SctpServerChannel;
 
 public class ServerThread extends Thread{
 
@@ -15,6 +27,13 @@ public class ServerThread extends Thread{
 	ServerSocket serverSocket;
 	public Node thisNode;
 	public int ackNackCount = 0;
+	public static final int MESSAGE_SIZE = 10000;
+	ByteBuffer byteBuffer;
+	SctpChannel sctpChannel;
+	SctpServerChannel sctpServerChannel;
+	InetSocketAddress serverAddr;
+	
+	
 	ServerThread(Node thisNode){
 		this.thisNode = thisNode;
 		msg = new Message();
@@ -22,7 +41,16 @@ public class ServerThread extends Thread{
 	}
 	public void run(){
 		try {
-			serverSocket = new ServerSocket(thisNode.getPort());
+			
+			byteBuffer = ByteBuffer.allocate(MESSAGE_SIZE);
+			
+			
+			//serverSocket = new ServerSocket(thisNode.getPort());
+			sctpServerChannel = SctpServerChannel.open();
+			serverAddr = new InetSocketAddress(thisNode.getPort());
+			sctpServerChannel.bind(serverAddr);
+			
+			
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -61,14 +89,30 @@ public class ServerThread extends Thread{
 			/////////////////////////////////////////////////////////////////////////////////
 			
 			try{
-				receiveSocket = serverSocket.accept();
+				//receiveSocket = serverSocket.accept();
+				sctpChannel = sctpServerChannel.accept();
+				MessageInfo messageInfo = sctpChannel.receive(byteBuffer, null,null);
+				
+				byteBuffer.position(0);
+				byteBuffer.limit(MESSAGE_SIZE);
+				byte[] bytes = new byte[byteBuffer.remaining()];
+				byteBuffer.get(bytes, 0, bytes.length);
+				ByteArrayInputStream b = new ByteArrayInputStream(bytes);
+				ObjectInputStream ois = new ObjectInputStream(b);
+				
+				Message msg = (Message) (ois.readObject());
+				
+				byteBuffer.clear();
+				byteBuffer.put(new byte[MESSAGE_SIZE]);
+				byteBuffer.clear();
+				
 				
 			//control comes here whenever a new client is connected to the server
 			//receiveSocket.getLocalAddress();		
 			
-			ObjectInputStream ois = new ObjectInputStream(receiveSocket.getInputStream());
+			//ObjectInputStream ois = new ObjectInputStream(receiveSocket.getInputStream());
 			
-			msg = (Message)ois.readObject();
+			//msg = (Message)ois.readObject();
 			
 				if(msg.getMsgType().equals("Find")){	//find msg
 				//	if(msg.)
@@ -78,13 +122,29 @@ public class ServerThread extends Thread{
 						nackMsg.setSender(thisNode);
 						nackMsg.setMsgType("Nack");
 						
-						sendSocket = new Socket(msg.getSender().getHostName(), msg.getSender().getPort());
-						ObjectOutputStream oos = new ObjectOutputStream(sendSocket.getOutputStream());
-						
-						//get the node's details who sent this find message
-						//and now send this nack message to that host's server
+						//********************************************************************************
+//						sendSocket = new Socket(msg.getSender().getHostName(), msg.getSender().getPort());
+//						ObjectOutputStream oos = new ObjectOutputStream(sendSocket.getOutputStream());
+//						
+//						//get the node's details who sent this find message
+//						//and now send this nack message to that host's server
+//						oos.writeObject(nackMsg);
+//						sendSocket.close();
+						//*********************************************************************************
+						SocketAddress socketAddress = new InetSocketAddress(msg.getSender().getHostName(), msg.getSender().getPort());
+						SctpChannel sctpChannel = SctpChannel.open();
+						sctpChannel.connect(socketAddress);
+						messageInfo = MessageInfo.createOutgoing(null, 0);
+						ByteArrayOutputStream bos = new ByteArrayOutputStream();
+						ObjectOutputStream oos = new ObjectOutputStream(bos);
 						oos.writeObject(nackMsg);
-						sendSocket.close();
+						byteBuffer.put(bos.toByteArray());
+						byteBuffer.flip();
+						sctpChannel.send(byteBuffer, messageInfo);
+						sctpChannel.close();
+						byteBuffer.clear();
+						
+						//*********************************************************************************
 					
 					}else {//this is not a root node
 						
@@ -98,34 +158,68 @@ public class ServerThread extends Thread{
 							Message ackMsg = new Message();
 							ackMsg.setSender(thisNode);
 							ackMsg.setMsgType("Ack");
-							
-							try{
-								sendSocket = new Socket(msg.getSender().getHostName(), msg.getSender().getPort());
-							}catch(ConnectException e){
-								System.out.println("["+ thisNode.getNodeId()+"]"+ "connect exception when try to connect to"+msg.getSender().getNodeId());
-							}
-							
-							ObjectOutputStream oos = new ObjectOutputStream(sendSocket.getOutputStream());
-							
-							//get the node's details who sent this find message
-							//and now send this nack message to that host's server
-							oos.writeObject(ackMsg);
-							
-							sendSocket.close();
+							//******************************************************************************
+//							try{
+//								sendSocket = new Socket(msg.getSender().getHostName(), msg.getSender().getPort());
+//							}catch(ConnectException e){
+//								System.out.println("["+ thisNode.getNodeId()+"]"+ "connect exception when try to connect to"+msg.getSender().getNodeId());
+//							}
+//							
+//							ObjectOutputStream oos = new ObjectOutputStream(sendSocket.getOutputStream());
+//							
+//							//get the node's details who sent this find message
+//							//and now send this nack message to that host's server
+//							oos.writeObject(ackMsg);
+//							
+//							sendSocket.close();
 							//send find message to the neighbors
+							
+							//*********************************************************************************
+							SocketAddress socketAddress = new InetSocketAddress(msg.getSender().getHostName(), msg.getSender().getPort());
+							SctpChannel sctpChannel = SctpChannel.open();
+							sctpChannel.connect(socketAddress);
+							messageInfo = MessageInfo.createOutgoing(null, 0);
+							ByteArrayOutputStream bos = new ByteArrayOutputStream();
+							ObjectOutputStream oos = new ObjectOutputStream(bos);
+							oos.writeObject(ackMsg);
+							byteBuffer.put(bos.toByteArray());
+							byteBuffer.flip();
+							sctpChannel.send(byteBuffer, messageInfo);
+							sctpChannel.close();
+							byteBuffer.clear();
+
+							
+							//*********************************************************************************
 							for(Node node:thisNode.getNeighbours()){
 								//Socket findSocket = new Socket(node.getHostName(), node.getPort());
 								
 								Message findMsg = new Message();
 								findMsg.setSender(thisNode);
 								findMsg.setMsgType("Find");
+								//********************************************************************************
+//								Socket findSendSocket = new Socket(node.getHostName(), node.getPort());
+//								ObjectOutputStream findOos = new ObjectOutputStream(findSendSocket.getOutputStream());
+//								
+//								findOos.writeObject(findMsg);
+//								
+//								findSendSocket.close();
+								//*********************************************************************************
+								socketAddress = new InetSocketAddress(node.getHostName(), node.getPort());
+								sctpChannel = SctpChannel.open();
+								sctpChannel.connect(socketAddress);
+								messageInfo = MessageInfo.createOutgoing(null, 0);
+								bos = new ByteArrayOutputStream();
+								oos = new ObjectOutputStream(bos);
+								oos.writeObject(findMsg);
+								byteBuffer.put(bos.toByteArray());
+								byteBuffer.flip();
+								sctpChannel.send(byteBuffer, messageInfo);
+								sctpChannel.close();
+								byteBuffer.clear();
+								//*********************************************************************************
 								
-								Socket findSendSocket = new Socket(node.getHostName(), node.getPort());
-								ObjectOutputStream findOos = new ObjectOutputStream(findSendSocket.getOutputStream());
 								
-								findOos.writeObject(findMsg);
 								
-								findSendSocket.close();
 							}
 						} else{	//parent is not null
 							//now there will be two cases
@@ -134,14 +228,29 @@ public class ServerThread extends Thread{
 								Message nackMsg = new Message();
 								nackMsg.setSender(thisNode);
 								nackMsg.setMsgType("Nack");
-								
-								sendSocket = new Socket(msg.getSender().getHostName(), msg.getSender().getPort());
-								ObjectOutputStream oos = new ObjectOutputStream(sendSocket.getOutputStream());
-								
-								//get the node's details who sent this find message
-								//and now send this nack message to that host's server
+								//*******************************************************************************
+//								sendSocket = new Socket(msg.getSender().getHostName(), msg.getSender().getPort());
+//								ObjectOutputStream oos = new ObjectOutputStream(sendSocket.getOutputStream());
+//								
+//								//get the node's details who sent this find message
+//								//and now send this nack message to that host's server
+//								oos.writeObject(nackMsg);
+//								sendSocket.close();
+								//**********************************************************************************
+								SocketAddress socketAddress = new InetSocketAddress(msg.getSender().getHostName(), msg.getSender().getPort());
+								SctpChannel sctpChannel = SctpChannel.open();
+								sctpChannel.connect(socketAddress);
+								messageInfo = MessageInfo.createOutgoing(null, 0);
+								ByteArrayOutputStream bos = new ByteArrayOutputStream();
+								ObjectOutputStream oos = new ObjectOutputStream(bos);
 								oos.writeObject(nackMsg);
-								sendSocket.close();
+								byteBuffer.put(bos.toByteArray());
+								byteBuffer.flip();
+								sctpChannel.send(byteBuffer, messageInfo);
+								sctpChannel.close();
+								byteBuffer.clear();
+								//***********************************************************************************
+								
 							}else {
 								//(update parent, send ack to sender) and (releaseMe to the current parent) and find to all the neighbours again
 								//1) releaseMe to current parent
@@ -149,14 +258,28 @@ public class ServerThread extends Thread{
 								releaseMsg.setSender(thisNode);
 								releaseMsg.setMsgType("ReleaseMe");
 								
-								sendSocket = new Socket(thisNode.getParent().getHostName(), thisNode.getParent().getPort());
-								ObjectOutputStream oos = new ObjectOutputStream(sendSocket.getOutputStream());
-								
-								//get the node's details who sent this find message
-								//and now send this nack message to that host's server
+								//***********************************************************************************
+//								sendSocket = new Socket(thisNode.getParent().getHostName(), thisNode.getParent().getPort());
+//								ObjectOutputStream oos = new ObjectOutputStream(sendSocket.getOutputStream());
+//								
+//								//get the node's details who sent this find message
+//								//and now send this nack message to that host's server
+//								oos.writeObject(releaseMsg);
+//								sendSocket.close();
+								//**************************************************************************************
+								SocketAddress socketAddress = new InetSocketAddress(thisNode.getParent().getHostName(), thisNode.getParent().getPort());
+								SctpChannel sctpChannel = SctpChannel.open();
+								sctpChannel.connect(socketAddress);
+								messageInfo = MessageInfo.createOutgoing(null, 0);
+								ByteArrayOutputStream bos = new ByteArrayOutputStream();
+								ObjectOutputStream oos = new ObjectOutputStream(bos);
 								oos.writeObject(releaseMsg);
-								sendSocket.close();
-								
+								byteBuffer.put(bos.toByteArray());
+								byteBuffer.flip();
+								sctpChannel.send(byteBuffer, messageInfo);
+								sctpChannel.close();
+								byteBuffer.clear();
+								//**************************************************************************************
 								//2)(update parent, send ack to FindSender, update DFR)
 								thisNode.setParent(msg.getSender());
 								
@@ -167,22 +290,36 @@ public class ServerThread extends Thread{
 								Message ackMsg = new Message();
 								ackMsg.setSender(thisNode);
 								ackMsg.setMsgType("Ack");
-								
-								try{
-									sendSocket = new Socket(msg.getSender().getHostName(), msg.getSender().getPort());
-								}catch(ConnectException e){
-									System.out.println("["+ thisNode.getNodeId()+"]"+ "connect exception when try to connect to"+msg.getSender().getNodeId());
-								}
-								
-								ObjectOutputStream oos1 = new ObjectOutputStream(sendSocket.getOutputStream());
-								
-								//get the node's details who sent this find message
-								//and now send this nack message to that host's server
-								oos1.writeObject(ackMsg);
-								
-								sendSocket.close();
+//								//**************************************************************************************
+//								try{
+//									sendSocket = new Socket(msg.getSender().getHostName(), msg.getSender().getPort());
+//								}catch(ConnectException e){
+//									System.out.println("["+ thisNode.getNodeId()+"]"+ "connect exception when try to connect to"+msg.getSender().getNodeId());
+//								}
+//								
+//								ObjectOutputStream oos1 = new ObjectOutputStream(sendSocket.getOutputStream());
+//								
+//								//get the node's details who sent this find message
+//								//and now send this nack message to that host's server
+//								oos1.writeObject(ackMsg);
+//								
+//								sendSocket.close();
 								
 								//set ackNackCount to 0;
+								//***************************************************************************************
+								socketAddress = new InetSocketAddress(msg.getSender().getHostName(), msg.getSender().getPort());
+								sctpChannel = SctpChannel.open();
+								sctpChannel.connect(socketAddress);
+								messageInfo = MessageInfo.createOutgoing(null, 0);
+								bos = new ByteArrayOutputStream();
+								oos = new ObjectOutputStream(bos);
+								oos.writeObject(ackMsg);
+								byteBuffer.put(bos.toByteArray());
+								byteBuffer.flip();
+								sctpChannel.send(byteBuffer, messageInfo);
+								sctpChannel.close();
+								byteBuffer.clear();
+								//***************************************************************************************
 								ackNackCount = 0;
 								//3)find to all the neighbours
 								//send find message to the neighbors
@@ -192,13 +329,28 @@ public class ServerThread extends Thread{
 									Message findMsg = new Message();
 									findMsg.setSender(thisNode);
 									findMsg.setMsgType("Find");
+									//****************************************************************************
+//									Socket findSendSocket = new Socket(node.getHostName(), node.getPort());
+//									ObjectOutputStream findOos = new ObjectOutputStream(findSendSocket.getOutputStream());
+//									
+//									findOos.writeObject(findMsg);
+//									
+//									findSendSocket.close();
+									//*****************************************************************************
+									socketAddress = new InetSocketAddress(node.getHostName(), node.getPort());
+									sctpChannel = SctpChannel.open();
+									sctpChannel.connect(socketAddress);
+									messageInfo = MessageInfo.createOutgoing(null, 0);
+									bos = new ByteArrayOutputStream();
+									oos = new ObjectOutputStream(bos);
+									oos.writeObject(findMsg);
+									byteBuffer.put(bos.toByteArray());
+									byteBuffer.flip();
+									sctpChannel.send(byteBuffer, messageInfo);
+									sctpChannel.close();
+									byteBuffer.clear();
+									//************************************************************************************
 									
-									Socket findSendSocket = new Socket(node.getHostName(), node.getPort());
-									ObjectOutputStream findOos = new ObjectOutputStream(findSendSocket.getOutputStream());
-									
-									findOos.writeObject(findMsg);
-									
-									findSendSocket.close();
 								}
 								
 								
