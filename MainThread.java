@@ -40,8 +40,7 @@ public class MainThread {
 			args[i]=args[i].trim();
 		}
 		thisNode.setNodeId(Integer.parseInt(args[1]));
-//		thisNode.setHostName(args[2]);
-//		thisNode.setPort(Integer.parseInt(args[3]));
+		
 		////////////////////////////////////////////////////////////////////////////////////////
 		//This is To get the My Own Hostname and My Own Port Number
 		FileReader fileReader = new FileReader(args[0]);	//Reading "Temp" file
@@ -125,7 +124,7 @@ public class MainThread {
 		}
 	
 	//used for sending findMsg to node server
-	static void createClient(Message findMsg, Node node){
+	static void createClient(Message findMsg, Node node) throws InterruptedException{
 		SocketAddress socketAddress = new InetSocketAddress(node.getHostName(), node.getPort());
 		try{
 			SctpChannel sctpChannel = SctpChannel.open();
@@ -141,6 +140,7 @@ public class MainThread {
 			byteBuffer.clear();
 		}catch(IOException e1){
 			System.out.println("["+thisNode.getNodeId()+"]"+"client received exception while connecting to "+ node.getNodeId());
+			Thread.sleep(3000);
 			//recreate a client socket if the server it is trying to connect to has not started yet
 			createClient(findMsg, node);
 		}

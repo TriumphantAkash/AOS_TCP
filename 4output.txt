@@ -1,3 +1,0 @@
-me: 4
-parent: 1
-children: 0 

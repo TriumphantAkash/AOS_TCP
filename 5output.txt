@@ -1,2 +1,0 @@
-me: 5
-parent: *children: 1 10 11 12 
