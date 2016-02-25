@@ -6,6 +6,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -47,7 +48,7 @@ public class MainThread {
 		BufferedReader bufferReader1 = new BufferedReader(fileReader);	//	BufferedReader 1 -- To Get MyHostname and MyPortNumber
 	
 		String line = bufferReader1.readLine();				//Line = First line of Temp file-- "TotalNumNodes" "RootNode"
-		String[] words = line.split("\t", -1);		//String Array of Words to store TotalNumNodes and RootNode
+		String[] words = line.split("\\s+");		//String Array of Words to store TotalNumNodes and RootNode
 		for(int i=0; i<words.length; i++){
 			words[i]=words[i].trim();
 		}
@@ -71,7 +72,7 @@ public class MainThread {
 		{
 			line = bufferReader1.readLine();	//Reading From Second Line till Last Line of Host Information(just before the Neighbour List Starts)
 			//filewriter.write("node before" +myNodeId+ "is:" +line);
-			words = line.split("\t", -1);
+			words = line.split("\\s+");
 			for(int j=0;j<words.length;j++)
 			{
 				words[j]=words[j].trim();				
@@ -97,61 +98,51 @@ public class MainThread {
 		thisNode.setNeighbours(configParser.getNeighbors(args[0], Integer.parseInt(args[1]), nodeCount));
 		System.out.println("["+ thisNode.getNodeId()+"]"+"my neighbours are:");
 		for(Node node:thisNode.getNeighbours()){
-			System.out.print(node.getNodeId()+" ");
+			//System.out.print(node.getNodeId()+" ");
 		}
-		System.out.println("\n");
+		//System.out.println("\n");
 		
 		FileReader fileReader1 = new FileReader(args[0]);
 		BufferedReader bufferedReader = new BufferedReader(fileReader1);
-		
-		try {
+	
 
 			serverThread = new ServerThread(thisNode);
 			serverThread.start();
 			
 		//first making clients for all the neighbours of root node (make sure, the servers on root's neighbours are up and running before deploying this code to root)
 			if(thisNode.isRoot()){
-				Thread.sleep(5000);
+				Message findMsg = new Message();
+				findMsg.setSender(thisNode);
+				findMsg.setMsgType("Find");
+				
+				//Thread.sleep(5000);
 				for(Node node:thisNode.getNeighbours()){
-					//Socket findSocket = new Socket(node.getHostName(), node.getPort());
-					
-					Message findMsg = new Message();
-					findMsg.setSender(thisNode);
-					findMsg.setMsgType("Find");
-					//*****************************************************************************
-//					Socket findSendSocket = new Socket(node.getHostName(), node.getPort());
-//					ObjectOutputStream findOos = new ObjectOutputStream(findSendSocket.getOutputStream());
-//					
-//					findOos.writeObject(findMsg);
-//					
-//					findSendSocket.close();
-					//***********************************************************
-					SocketAddress socketAddress = new InetSocketAddress(node.getHostName(), node.getPort());
-					SctpChannel sctpChannel = SctpChannel.open();
-					sctpChannel.connect(socketAddress);
-					MessageInfo messageInfo = MessageInfo.createOutgoing(null, 0);
-					ByteArrayOutputStream bos = new ByteArrayOutputStream();
-					ObjectOutputStream oos = new ObjectOutputStream(bos);
-					oos.writeObject(findMsg);
-					byteBuffer.put(bos.toByteArray());
-					byteBuffer.flip();
-					sctpChannel.send(byteBuffer, messageInfo);
-					sctpChannel.close();
-					byteBuffer.clear();
-					
-					//***********************************************************
+					createClient(findMsg, node);
 				}
 			}
-			
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		finally {
-			//sendSocket.close();
-			//receiveSocket.close();
+			//so that the main thread waits for the server threads to exit
 			serverThread.join();
+		}
+	
+	//used for sending findMsg to node server
+	static void createClient(Message findMsg, Node node){
+		SocketAddress socketAddress = new InetSocketAddress(node.getHostName(), node.getPort());
+		try{
+			SctpChannel sctpChannel = SctpChannel.open();
+			sctpChannel.connect(socketAddress);
+			MessageInfo messageInfo = MessageInfo.createOutgoing(null, 0);
+			ByteArrayOutputStream bos = new ByteArrayOutputStream();
+			ObjectOutputStream oos = new ObjectOutputStream(bos);
+			oos.writeObject(findMsg);
+			byteBuffer.put(bos.toByteArray());
+			byteBuffer.flip();
+			sctpChannel.send(byteBuffer, messageInfo);
+			sctpChannel.close();
+			byteBuffer.clear();
+		}catch(IOException e1){
+			System.out.println("["+thisNode.getNodeId()+"]"+"client received exception while connecting to "+ node.getNodeId());
+			//recreate a client socket if the server it is trying to connect to has not started yet
+			createClient(findMsg, node);
 		}
 	}
 }

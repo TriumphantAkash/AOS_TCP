@@ -46,7 +46,7 @@ public class ConfigParser {
 		
 			
 		line = bufferedReader.readLine();	//now line has node ids of 'nodeNumber's neighbours
-		String[] neighboursNodeIds = line.split("\t", -1);
+		String[] neighboursNodeIds = line.split("\\s+");
 		
 		//removing extra whitespaces from the strings in order to get rid of NumberFormatException later
 		for(int i=0;i<neighboursNodeIds.length;i++){
@@ -73,7 +73,7 @@ public class ConfigParser {
 				for(int j=0; j<nodeCount; j++){
 					line = newBufferedReader.readLine();
 					System.out.println(line);
-					String[] nodeDetails = line.split("\t", -1);
+					String[] nodeDetails = line.split("\\s+");
 					
 					//removing extra whitespaces from the strings in order to get rid of NumberFormatException later
 					for(int i=0;i<nodeDetails.length;i++){
