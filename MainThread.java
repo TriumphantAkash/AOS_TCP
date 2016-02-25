@@ -1,12 +1,8 @@
-import java.io.File;
 import java.io.FileReader;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -25,7 +21,7 @@ public class MainThread {
 	public static int nodeCount;
 	public static int ackNackCount = 0;
 	public static ServerThread serverThread;
-	public static final int MESSAGE_SIZE = 10000;
+	public static final int MESSAGE_SIZE = 500000;
 	
 	public static ByteBuffer byteBuffer = ByteBuffer.allocate(MESSAGE_SIZE);
 	
@@ -53,9 +49,7 @@ public class MainThread {
 		}
 
 		nodeCount = Integer.parseInt(words[0]);	//TotalNodes = First word in First Line
-		System.out.println("node count is: "+nodeCount);
 		rootNodeId = Integer.parseInt(words[1]);		//RootNode = Second Word in First line
-		System.out.println("root node id is :"+rootNodeId);
 		
 		if(rootNodeId==thisNode.getNodeId())
 		{
@@ -95,7 +89,7 @@ public class MainThread {
 		
 		ConfigParser configParser = new ConfigParser();
 		thisNode.setNeighbours(configParser.getNeighbors(args[0], Integer.parseInt(args[1]), nodeCount));
-		System.out.println("["+ thisNode.getNodeId()+"]"+"my neighbours are:");
+		//System.out.println("["+ thisNode.getNodeId()+"]"+"my neighbours are:");
 		for(Node node:thisNode.getNeighbours()){
 			//System.out.print(node.getNodeId()+" ");
 		}
@@ -139,7 +133,7 @@ public class MainThread {
 			sctpChannel.close();
 			byteBuffer.clear();
 		}catch(IOException e1){
-			System.out.println("["+thisNode.getNodeId()+"]"+"client received exception while connecting to "+ node.getNodeId());
+			//System.out.println("["+thisNode.getNodeId()+"]"+"client received exception while connecting to "+ node.getNodeId());
 			Thread.sleep(3000);
 			//recreate a client socket if the server it is trying to connect to has not started yet
 			createClient(findMsg, node);

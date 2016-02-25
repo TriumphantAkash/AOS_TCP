@@ -5,16 +5,11 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.charset.Charset;
-import java.nio.charset.CharsetEncoder;
-
 import com.sun.nio.sctp.MessageInfo;
 import com.sun.nio.sctp.SctpChannel;
 import com.sun.nio.sctp.SctpServerChannel;
@@ -27,7 +22,7 @@ public class ServerThread extends Thread{
 	ServerSocket serverSocket;
 	public Node thisNode;
 	public int ackNackCount = 0;
-	public static final int MESSAGE_SIZE = 10000;
+	public static final int MESSAGE_SIZE = 500000;
 	ByteBuffer byteBuffer;
 	SctpChannel sctpChannel;
 	SctpServerChannel sctpServerChannel;
@@ -52,7 +47,6 @@ public class ServerThread extends Thread{
 			
 			
 		} catch (IOException e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
 		while(true){
@@ -114,14 +108,11 @@ public class ServerThread extends Thread{
 							try {
 								sendMessage(ackMsg, msg.getSender());
 							} catch (InterruptedException e) {
-								// TODO Auto-generated catch block
 								//e.printStackTrace();
 								System.out.println("error here");
 							}
 							
-							for(Node node:thisNode.getNeighbours()){
-								//Socket findSocket = new Socket(node.getHostName(), node.getPort());
-								
+							for(Node node:thisNode.getNeighbours()){								
 								Message findMsg = new Message();
 								findMsg.setSender(thisNode);
 								findMsg.setMsgType("Find");
@@ -129,7 +120,6 @@ public class ServerThread extends Thread{
 								try {
 									sendMessage(findMsg, node);
 								} catch (InterruptedException e) {
-									// TODO Auto-generated catch block
 									//e.printStackTrace();
 									System.out.println("exception here");
 								}
@@ -224,7 +214,7 @@ public class ServerThread extends Thread{
 				}
 				
 				if(msg.getMsgType().equals("Nack")){
-					//do noting
+					//increment acknack count
 					ackNackCount++;
 				}
 				
@@ -242,7 +232,7 @@ public class ServerThread extends Thread{
 				}
 				
 				}catch(IOException | ClassNotFoundException e){
-					e.printStackTrace();
+					//e.printStackTrace();
 				}
 			finally {
 					try {
@@ -258,25 +248,24 @@ public class ServerThread extends Thread{
 	
 	void writeOutput(boolean flag){
 		//write to file and exit
-		File file = new File("config_name-"+thisNode.getNodeId()+".txt");
+		File file = new File("config-"+thisNode.getNodeId()+".out");
 		
 		try {
 			FileWriter fileWriter = new FileWriter(file, flag);
-			fileWriter.write("me: "+thisNode.getNodeId()+"\n");
+			//fileWriter.write("me: "+thisNode.getNodeId()+"\n");
 			if(thisNode.getParent() != null){
-				fileWriter.write("parent: "+thisNode.getParent().getNodeId()+"\n");
+				fileWriter.write(thisNode.getParent().getNodeId()+"\n");
 			}else {
-				fileWriter.write("parent: *");
+				fileWriter.write("*\n");
 			}
 			
 			if(thisNode.getChildren().size() == 0){
-				fileWriter.write("children: *");
+				fileWriter.write("*");
 			}else {
-				fileWriter.write("children: ");
-				
 				for (Node node: thisNode.getChildren()){
 					fileWriter.write(node.getNodeId()+" ");
 				}
+				fileWriter.write("\n");
 			}
 			
 			fileWriter.close();

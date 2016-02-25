@@ -3,7 +3,7 @@
 #Author: Mayank Agrawal
 #Compile all java Programs
 javac *.java
-echo "Compiled all the Programms Successfully"
+#echo "Compiled all the Programms Successfully"
 
 #Read the Command Line Arguments
 #First: Configuration File
@@ -65,7 +65,7 @@ do
 		   # echo "node_id" $node_id
 		   # echo "hostname" $hostname
 		   # echo "portNum" $port_num
-		   echo "laucher script is now going to launch the java file into the" $hostname "and pass the argument two arguments as temp file and node ID" $node_id 
+		  # echo "laucher script is now going to launch the java file into the" $hostname "and pass the argument two arguments as temp file and node ID" $node_id 
 		    ssh -o StrictHostKeyChecking=no $netid@$hostname "cd $(pwd); java MainThread temp $node_id" &  #execute the java parser file and pass the args as node id and temp file
 		    fi
 	fi
@@ -73,8 +73,8 @@ do
 	let current_line+=1
 done < temp
 
-	echo "Root Node is: " $root_node
-	echo "laucher script is now going to launch the java file into root_Node" $root_node 
+#	echo "Root Node is: " $root_node
+#	echo "laucher script is now going to launch the java file into root_Node" $root_node 
 	ssh -o StrictHostKeyChecking=no $netid@$hostname_root "cd $(pwd); java MainThread temp $root_node"  #execute the java parser file and pass the args as node id and temp file
 
 
